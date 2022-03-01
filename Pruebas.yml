@@ -1,0 +1,63 @@
+---
+- hosts: all
+  connection: local
+  become: yes
+  become_user: root
+  vars:
+    cli:
+      username: ansiblepr
+      password: Generica2020
+      auth_pass: Mpc4dm1n#
+      authorize: yes
+      timeout: 30
+
+  tasks:
+
+  - name: show version
+    ios_command:
+      provider : "{{ cli }}"
+      commands:
+          - sh ver | i uptime
+          - sh inventory
+          - sh run | i hostname s
+    register: a
+
+  - name: debug en pantalla
+    debug:
+      msg:
+         - "{{ a.stdout_lines }}"
+
+
+  - name: Extraccion de interfaz
+    ios_command:
+      provider : "{{ cli }}"
+      commands: sh ip int br | i Vlan24
+    register: a1
+
+  - name: debug de la vlan
+    debug:
+      msg: "{{ a1.stdout_lines }}"
+
+
+  - set_fact:
+      c: "{{ (a1.stdout_lines[0] | regex_replace(' ', '*')).split('*')[0]}}"
+
+  - name:
+    debug:
+      msg: "{{ c[2:] }}"
+
+
+  - name: prueba de ping
+    ios_ping:
+      provider: "{{ cli }}"
+      source: "{{ c[2:] }}"
+      dest: 8.8.8.8
+    register: a3
+
+  - name: debug del ping
+    debug:
+            msg:
+             -  "El tiempo promedio a internet por el canal de ETB es: {{ a3.rtt.avg }} ms"
+             -  "El tiempo Maximo a internet por el canal de ETB es: {{ a3.rtt.max }} ms"
+             -  "El tiempo min a internet por el canal de ETB es: {{ a3.rtt.min }} ms"
+             -  "Cantidad de paquetes perdidos: {{ a3.packet_loss }}"
